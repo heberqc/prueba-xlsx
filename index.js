@@ -76,20 +76,33 @@ app.get('/createData', (req, res, next) => {
 	res.status(200).send(XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'}));
 })
 
+// curl -d '{ "employee_id": "1234567", "key": "number", "value": "5703380" }' 'http://localhost:7262/createCsv'
 app.post('/createCsv', (req, res, next) => {
-	const body = req.body
-	console.log('body:', body);
+	const fields = req.fields
+	console.log('fields:', fields);
 
-	// fs.writeFileSync(file, data[, options])
+	try {
+		fs.appendFileSync(
+			'modified-data.csv',
+			`${fields.employee_id}\t${fields.key}\t${fields.value}\n`,
+			'utf8',
+		)
+		console.log('The "data to append" was appended to file!');
+		res.status(200).send({ message: 'Se guardaron los cambios.' });
+	} catch (err) {
+		/* Handle the error */
+		console.log('POST [createCsv] Error:', err)
+		res.status(500).send({ message: 'Hubo un error al guardar los cambios.' });
+	}
 
-	const ws = XLSX.utils.json_to_sheet([
-	  { employee_id: 'employee_id', clave: 'clave', valor: 'valor' },
-	  {...body}
-	], {header:[ "employee_id", "clave", "valor" ]});
+})
 
-	var wb = XLSX.utils.book_new();
-	XLSX.utils.book_append_sheet(wb, ws, "SheetJS");
-	// XLSX.writeFile(wb, './out.xlsx');
+// curl -X GET http://localhost:7262/changed-data --output 'prueba.xlsx'
+app.get('/changed-data', (req, res, next) => {
+	const wb = XLSX.utils.book_new();
+	const datos = fs.readFileSync('modified-data.csv', 'utf8').split("\n").map(item => item.split("\t"))
+	const ws = XLSX.utils.aoa_to_sheet(datos);
+	XLSX.utils.book_append_sheet(wb, ws);
 	res.status(200).send(XLSX.write(wb, {type: 'buffer', bookType: 'xlsx'}));
 })
 
